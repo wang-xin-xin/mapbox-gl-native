@@ -44,6 +44,7 @@ import static com.mapbox.mapboxsdk.location.LocationComponentConstants.PROPERTY_
 import static com.mapbox.mapboxsdk.location.LocationComponentConstants.PROPERTY_GPS_BEARING;
 import static com.mapbox.mapboxsdk.location.LocationComponentConstants.PROPERTY_LOCATION_STALE;
 import static com.mapbox.mapboxsdk.location.LocationComponentConstants.PROPERTY_SHADOW_ICON_OFFSET;
+import static com.mapbox.mapboxsdk.location.LocationComponentConstants.PULSING_CIRCLE_LAYER;
 import static com.mapbox.mapboxsdk.location.LocationComponentConstants.SHADOW_ICON;
 import static com.mapbox.mapboxsdk.location.LocationComponentConstants.SHADOW_LAYER;
 import static com.mapbox.mapboxsdk.style.expressions.Expression.interpolate;
@@ -52,6 +53,8 @@ import static com.mapbox.mapboxsdk.style.expressions.Expression.stop;
 import static com.mapbox.mapboxsdk.style.expressions.Expression.zoom;
 import static com.mapbox.mapboxsdk.style.layers.Property.NONE;
 import static com.mapbox.mapboxsdk.style.layers.Property.VISIBLE;
+import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.circleColor;
+import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.circleOpacity;
 import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.iconSize;
 import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.visibility;
 import static com.mapbox.mapboxsdk.utils.ColorUtils.colorToRgbaString;
@@ -123,6 +126,8 @@ final class LocationLayerController implements MapboxAnimator.OnLayerAnimationsV
     styleBearing(options);
     styleAccuracy(options.accuracyAlpha(), options.accuracyColor());
     styleScaling(options);
+    styleScaling(options);
+    stylePulsingCircle(options);
     determineIconsSource(options);
   }
 
@@ -229,6 +234,7 @@ final class LocationLayerController implements MapboxAnimator.OnLayerAnimationsV
     addSymbolLayer(BACKGROUND_LAYER, FOREGROUND_LAYER);
     addSymbolLayer(SHADOW_LAYER, BACKGROUND_LAYER);
     addAccuracyLayer();
+    addPulsingCircleLayerToMap();
   }
 
   private void addSymbolLayer(@NonNull String layerId, @NonNull String beforeLayerId) {
@@ -244,6 +250,11 @@ final class LocationLayerController implements MapboxAnimator.OnLayerAnimationsV
   private void addLayerToMap(Layer layer, @NonNull String idBelowLayer) {
     style.addLayerBelow(layer, idBelowLayer);
     layerMap.add(layer.getId());
+  }
+
+  private void addPulsingCircleLayerToMap() {
+    Layer pulsingCircleLayer = layerSourceProvider.generatePulsingCircleLayer();
+    addLayerToMap(pulsingCircleLayer, ACCURACY_LAYER);
   }
 
   private void removeLayers() {
@@ -349,6 +360,18 @@ final class LocationLayerController implements MapboxAnimator.OnLayerAnimationsV
               stop(mapboxMap.getMaxZoomLevel(), options.maxZoomIconScale())
             )
           )
+        );
+      }
+    }
+  }
+
+  private void stylePulsingCircle(LocationComponentOptions options) {
+    if (mapboxMap.getStyle() != null) {
+      if (mapboxMap.getStyle().getLayer(PULSING_CIRCLE_LAYER) != null) {
+        setLayerVisibility(PULSING_CIRCLE_LAYER, options.pulsingCircleEnabled());
+        mapboxMap.getStyle().getLayer(PULSING_CIRCLE_LAYER).setProperties(
+          circleColor(options.pulsingCircleColor()),
+          circleOpacity(options.pulsingCircleAlpha())
         );
       }
     }

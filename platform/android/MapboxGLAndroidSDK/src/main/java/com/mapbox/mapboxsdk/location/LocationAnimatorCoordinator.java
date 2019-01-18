@@ -7,6 +7,10 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.view.animation.FastOutSlowInInterpolator;
 import android.util.SparseArray;
+import android.view.animation.AccelerateInterpolator;
+import android.view.animation.BounceInterpolator;
+import android.view.animation.DecelerateInterpolator;
+import android.view.animation.Interpolator;
 import android.view.animation.LinearInterpolator;
 
 import com.mapbox.mapboxsdk.camera.CameraPosition;
@@ -28,6 +32,7 @@ import static com.mapbox.mapboxsdk.location.MapboxAnimator.ANIMATOR_LAYER_ACCURA
 import static com.mapbox.mapboxsdk.location.MapboxAnimator.ANIMATOR_LAYER_COMPASS_BEARING;
 import static com.mapbox.mapboxsdk.location.MapboxAnimator.ANIMATOR_LAYER_GPS_BEARING;
 import static com.mapbox.mapboxsdk.location.MapboxAnimator.ANIMATOR_LAYER_LATLNG;
+import static com.mapbox.mapboxsdk.location.MapboxAnimator.ANIMATOR_PULSING_LOCATION_CIRCLE;
 import static com.mapbox.mapboxsdk.location.MapboxAnimator.ANIMATOR_TILT;
 import static com.mapbox.mapboxsdk.location.MapboxAnimator.ANIMATOR_ZOOM;
 import static com.mapbox.mapboxsdk.location.Utils.immediateAnimation;
@@ -43,11 +48,13 @@ final class LocationAnimatorCoordinator {
   private Location previousLocation;
   private float previousAccuracyRadius = -1;
   private float previousCompassBearing = -1;
+  private float previousPulsingCircleRadius = -1;
   private long locationUpdateTimestamp = -1;
   private float durationMultiplier;
   private final MapboxAnimatorSetProvider animatorSetProvider;
   private boolean compassAnimationEnabled;
   private boolean accuracyAnimationEnabled;
+  private boolean pulsingCircleAnimationEnabled;
 
   LocationAnimatorCoordinator(@NonNull Projection projection, @NonNull MapboxAnimatorSetProvider animatorSetProvider) {
     this.projection = projection;
@@ -133,6 +140,16 @@ final class LocationAnimatorCoordinator {
                    @Nullable MapboxMap.CancelableCallback callback) {
     updateTiltAnimator((float) targetTilt, (float) currentCameraPosition.tilt, callback);
     playTiltAnimator(animationDuration);
+  }
+
+  void startLocationCirclePulsing(LocationComponentOptions options, MapboxMap mapboxMap, Location location) {
+    float targetPulsingCircleRadius = Utils.calculatePulsingCircleRadius(mapboxMap, location);
+    if (previousPulsingCircleRadius < 0) {
+      previousPulsingCircleRadius = targetPulsingCircleRadius;
+    }
+    playPulsingCircleAnimator(options.pulsingCircleDuration(), options.pulsingCircleInterpolator(),
+      mapboxMap, targetPulsingCircleRadius);
+    this.previousPulsingCircleRadius = targetPulsingCircleRadius;
   }
 
   private LatLng getPreviousLayerLatLng() {
@@ -274,6 +291,31 @@ final class LocationAnimatorCoordinator {
     animatorSetProvider.startAnimation(accuracyAnimators, new LinearInterpolator(), duration);
   }
 
+  private void playPulsingCircleAnimator(float durationOfSinglePulse, String interpolatorAnimationType,
+                                         MapboxMap mapboxMap, float targetPulsingCircleRadius) {
+    Interpolator interpolatorAnimationToUse;
+    switch(interpolatorAnimationType) {
+      case PulsingLocationMode.LINEAR:
+        interpolatorAnimationToUse = new LinearInterpolator();
+        break;
+      case PulsingLocationMode.ACCELERATE:
+        interpolatorAnimationToUse = new AccelerateInterpolator();
+        break;
+      case PulsingLocationMode.DECELERATE:
+        interpolatorAnimationToUse = new DecelerateInterpolator();
+        break;
+      case PulsingLocationMode.BOUNCE:
+        interpolatorAnimationToUse = new BounceInterpolator();
+        break;
+      default:
+        interpolatorAnimationToUse = new LinearInterpolator();
+        break;
+    }
+    new PulsingLocationCircleAnimator().animatePulsingCircleRadius(interpolatorAnimationToUse,
+      durationOfSinglePulse, mapboxMap, targetPulsingCircleRadius);
+  }
+
+
   private void playZoomAnimator(long duration) {
     MapboxAnimator animator = animatorArray.get(ANIMATOR_ZOOM);
     animator.setDuration(duration);
@@ -386,5 +428,9 @@ final class LocationAnimatorCoordinator {
 
   void setAccuracyAnimationEnabled(boolean accuracyAnimationEnabled) {
     this.accuracyAnimationEnabled = accuracyAnimationEnabled;
+  }
+
+  void setPulsingCircleAnimationEnabled(boolean pulsingCircleAnimationEnabled) {
+    this.pulsingCircleAnimationEnabled = pulsingCircleAnimationEnabled;
   }
 }

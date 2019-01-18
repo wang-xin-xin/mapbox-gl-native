@@ -558,6 +558,7 @@ public final class LocationComponent {
    *
    * @param options to update the current style
    */
+  @SuppressLint("MissingPermission")
   public void applyStyle(@NonNull final LocationComponentOptions options) {
     LocationComponent.this.options = options;
     if (mapboxMap.getStyle() != null) {
@@ -568,6 +569,10 @@ public final class LocationComponent {
       locationAnimatorCoordinator.setTrackingAnimationDurationMultiplier(options.trackingAnimationDurationMultiplier());
       locationAnimatorCoordinator.setCompassAnimationEnabled(options.compassAnimationEnabled());
       locationAnimatorCoordinator.setAccuracyAnimationEnabled(options.accuracyAnimationEnabled());
+      locationAnimatorCoordinator.setPulsingCircleAnimationEnabled(options.pulsingCircleEnabled());
+      if (options.pulsingCircleEnabled()) {
+        locationAnimatorCoordinator.startLocationCirclePulsing(options, mapboxMap, getLastKnownLocation());
+      }
       updateMapWithOptions(options);
     }
   }
