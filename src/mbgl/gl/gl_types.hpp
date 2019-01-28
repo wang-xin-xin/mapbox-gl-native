@@ -12,8 +12,8 @@ using GLuint = unsigned int;
 using GLfloat = float;
 using GLsizei = int;
 using GLchar = char;
-using GLintptr = ptrdiff_t;
-using GLsizeiptr = ptrdiff_t;
+using GLintptr = long;
+using GLsizeiptr = long;
 
 #define GL_ACTIVE_ATTRIBUTE_MAX_LENGTH 0x8B8A
 #define GL_ACTIVE_ATTRIBUTES 0x8B89
